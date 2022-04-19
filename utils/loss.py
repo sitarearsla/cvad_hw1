@@ -4,22 +4,22 @@ import torch.nn.functional as F
 
 def compute_masks(controls, num_targets):
     c_masks = []
-    # c = 2, branch 1 (lanefollow) is activated
+    # c = 3, branch 1 (lanefollow) is activated
     c_b1 = (controls == 3)
     c_b1 = torch.tensor(c_b1, dtype=torch.float32).cuda()
     c_b1 = torch.cat([c_b1] * num_targets, 1)
     c_masks.append(c_b1)
-    # c = 3, branch 2 (turn left) is activated
+    # c = 0, branch 2 (turn left) is activated
     c_b2 = (controls == 0)
     c_b2 = torch.tensor(c_b2, dtype=torch.float32).cuda()
     c_b2 = torch.cat([c_b2] * num_targets, 1)
     c_masks.append(c_b2)
-    # c = 4, branch 3 (turn right) is activated
+    # c = 1, branch 3 (turn right) is activated
     c_b3 = (controls == 1)
     c_b3 = torch.tensor(c_b3, dtype=torch.float32).cuda()
     c_b3 = torch.cat([c_b3] * num_targets, 1)
     c_masks.append(c_b3)
-    # c = 5, branch 4 (go straight) is activated
+    # c = 2, branch 4 (go straight) is activated
     c_b4 = (controls == 2)
     c_b4 = torch.tensor(c_b4, dtype=torch.float32).cuda()
     c_b4 = torch.cat([c_b4] * num_targets, 1)
@@ -64,23 +64,27 @@ def WCE(x, y, w):
 
 
 def MAE(x, y, w):
-    return F.l1_loss(x.squeeze(), y) * w
+    return F.l1_loss(x, y) * w
 
 
 def CAL_loss(params, opt=None):
     preds = params['preds']
     labels = params['labels']
     weights = params['weights']
+    losses = {}
     for i in preds:
         value = preds[i]
         if value.shape[1] == 1:
             loss = MAE(value, labels[i], weights[i])
         else:
             loss = WCE(value, labels[i], weights[i])
+        losses[i] = loss
+
+    total_loss = losses['lane_dist'] + losses['route_angle'] + losses['tl_state'] + losses['tl_dist']
 
     if opt is not None:
-        loss.backward()
+        total_loss.backward()
         opt.step()
         opt.zero_grad()
 
-    return loss
+    return losses, total_loss
