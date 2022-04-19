@@ -22,10 +22,8 @@ def validate(model, dataloader):
         with torch.no_grad():
             params = {'branches': model(torch.squeeze(data['rgb'].cuda()), data['speed'].cuda()),
                       'targets': torch.cat(targets_vec, 1).cuda(),
-                      'branch_weights': [0.95, 0.95, 0.95, 0.95, 0.05],
-                      'inputs': data['speed'].cuda(),
-                      'controls': data['command'].cuda(),
-                      'variable_weights': {'steer': 0.5, 'throttle': 0.45, 'brake': 0.05}}
+                      'speed': data['speed'].cuda(),
+                      'controls': data['command'].cuda()}
             l = Loss(params)
             loss_total += l.item()
         #if counter % 500 == 0:
@@ -44,18 +42,14 @@ def train(model, dataloader):
         counter += 1
         model.zero_grad()
         targets_vec = []
-        branch_w = [0.95, 0.95, 0.95, 0.95, 0.05]
-        variable_w = {'steer': 0.5, 'throttle': 0.45, 'brake': 0.05}
         actions = ["throttle", "brake", "steer"]
         for target_name in actions:
             targets_vec.append(data[target_name])
         torch.cat(targets_vec, 1)
         params = {'branches': model(torch.squeeze(data['rgb'].cuda()), data['speed'].cuda()),
                   'targets': torch.cat(targets_vec, 1).cuda(),
-                  'branch_weights': branch_w,
-                  'inputs': data['speed'].cuda(),
-                  'controls': data['command'].cuda(),
-                  'variable_weights': variable_w}
+                  'speed': data['speed'].cuda(),
+                  'controls': data['command'].cuda()}
         l = Loss(params)
         l.backward()
         optimizer.step()

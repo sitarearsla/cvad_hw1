@@ -34,24 +34,22 @@ class Evaluator():
             branches = self.agent(rgb, speed)
             if command == 0:
                 x = branches[1].data
-                generated = x.detach().cpu()
-                generated = np.array(generated).astype(np.float)
-                return generated[0]
             elif command == 1:
                 x = branches[2].data
-                generated = x.detach().cpu()
-                generated = np.array(generated).astype(np.float)
-                return generated[0]
             elif command == 2:
                 x = branches[3].data
-                generated = x.detach().cpu()
-                generated = np.array(generated).astype(np.float)
-                return generated[0]
             else:
                 x = branches[0].data
-                generated = x.detach().cpu()
-                generated = np.array(generated).astype(np.float)
-                return generated[0]
+        generated = x.detach().cpu()
+        generated = np.array(generated).astype(np.float)
+        throttle, brake, steer = generated[0]
+
+        if throttle > brake:
+            brake = 0
+        elif brake > throttle:
+            throttle = 0
+        print(command, throttle, steer, brake)
+        return throttle, brake, steer
 
     def take_step(self, state):
         rgb = state["rgb"]
@@ -71,6 +69,7 @@ class Evaluator():
         for i in range(num_trials):
             state, _, is_terminal = self.env.reset()
             for i in range(5000):
+                print('step'+str(i))
                 if is_terminal:
                     break
                 state, is_terminal = self.take_step(state)

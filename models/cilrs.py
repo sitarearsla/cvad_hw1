@@ -61,14 +61,14 @@ class CILRS(nn.Module):
                 nn.init.xavier_uniform_(m.weight)
                 nn.init.constant_(m.bias, 0.1)
 
-    def forward(self, img, command):
+    def forward(self, img, speed):
         x = self.resnet18(img)
         x = self.resnet_connection(x)
-        m = self.measurements(command)
+        m = self.measurements(speed)
         j = self.join(torch.cat((x, m), 1))
         arr = []
         for branch in self.branches:
-            result=branch(j)
+            result = branch(j)
             arr.append(result)
-        s = self.speed_prediction(j)
+        s = self.speed_prediction(x)
         return arr + [s]
