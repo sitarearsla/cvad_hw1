@@ -25,7 +25,7 @@ def validate(model, dataloader):
                                  'tl_state': data['tl_state'].cuda(),
                                  'tl_dist': data['tl_dist'].cuda()},
                       'weights': {
-                          'tl_state': torch.Tensor([0.1109, 10.0]).cuda(),
+                          'tl_state': torch.Tensor([0.1, 10.0]).cuda(),
                           'route_angle': torch.Tensor([1]).cuda(),
                           'lane_dist': torch.Tensor([1]).cuda(),
                           'tl_dist': torch.Tensor([1]).cuda()}
@@ -148,7 +148,7 @@ def main():
 
     # You can change these hyper parameters freely, and you can add more
     num_epochs = 10
-    batch_size = 8
+    batch_size = 64
     save_path = "pred_model.ckpt"
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,
