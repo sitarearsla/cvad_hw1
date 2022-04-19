@@ -11,6 +11,10 @@ def validate(model, dataloader):
     """Validate model performance on the validation dataset"""
     model.cuda()
     loss_total = 0
+    tl_state_loss = 0
+    route_angle_loss = 0
+    tl_dist_loss = 0
+    lane_dist_loss = 0
     counter = 0
     for data in dataloader:
         counter += 1
@@ -26,12 +30,20 @@ def validate(model, dataloader):
                           'lane_dist': torch.Tensor([1]).cuda(),
                           'tl_dist': torch.Tensor([1]).cuda()}
                       }
-            l = CAL_loss(params)
-            loss_total += l.item()
+            affordance_l, total_l = CAL_loss(params)
+            loss_total += total_l.item()
+            tl_state_loss += affordance_l['tl_state'].item()
+            lane_dist_loss += affordance_l['lane_dist'].item()
+            tl_dist_loss += affordance_l['tl_dist'].item()
+            route_angle_loss += affordance_l['route_angle'].item()
         if counter % 200 == 0:
             print("val iter " + str(counter))
     print("val loss:" + str(loss_total))
-    return loss_total / counter
+    avg_loss = loss_total / counter
+    losses = {'avg_loss': avg_loss, 'tl_state': tl_state_loss,
+              'tl_dist': tl_dist_loss, 'route_angle': route_angle_loss,
+              'lane_dist': lane_dist_loss}
+    return losses
 
 
 def train(model, dataloader):
@@ -40,6 +52,10 @@ def train(model, dataloader):
     model.cuda()
     optimizer = optim.Adam(model.parameters(), lr=0.0002)
     loss_total = 0
+    tl_state_loss = 0
+    route_angle_loss = 0
+    tl_dist_loss = 0
+    lane_dist_loss = 0
     counter = 0
     for data in dataloader:
         counter += 1
@@ -55,24 +71,70 @@ def train(model, dataloader):
                       'tl_dist': torch.Tensor([1]).cuda()}
                   }
 
-        l = CAL_loss(params, optimizer)
-        loss_total += l.item()
+        affordance_l, total_l = CAL_loss(params, optimizer)
+        loss_total += total_l.item()
+        tl_state_loss += affordance_l['tl_state'].item()
+        lane_dist_loss += affordance_l['lane_dist'].item()
+        tl_dist_loss += affordance_l['tl_dist'].item()
+        route_angle_loss += affordance_l['route_angle'].item()
         torch.cuda.empty_cache()
         if counter % 500 == 0:
             print("train iter " + str(counter))
-            print(l.item())
     print("Train loss:" + str(loss_total))
-    return loss_total / counter
+    avg_loss = loss_total / counter
+    losses = {'avg_loss':avg_loss, 'tl_state':tl_state_loss,
+              'tl_dist': tl_dist_loss,'route_angle':route_angle_loss,
+              'lane_dist':lane_dist_loss}
+    return losses
 
 
 def plot_losses(train_loss, val_loss):
     """Visualize your plots and save them for your report."""
+    avg_loss_train = train_loss['avg_loss']
+    tl_state_loss_train = train_loss['tl_state']
+    route_angle_loss_train = train_loss['route_angle']
+    tl_dist_loss_train = train_loss['tl_dist']
+    lane_dist_loss_train = train_loss['lane_dist']
+
+    avg_loss_val = val_loss['avg_loss']
+    tl_state_loss_val = val_loss['tl_state']
+    route_angle_loss_val = val_loss['route_angle']
+    tl_dist_loss_val  = val_loss['tl_dist']
+    lane_dist_loss_val = val_loss['lane_dist']
+
     fig, (ax1, ax2) = plt.subplots(2)
-    fig.suptitle('Train Loss & Val Loss')
-    train_loss_x = range(len(train_loss))
-    val_loss_x = range(len(val_loss))
-    ax1.plot(train_loss_x, train_loss)
-    ax2.plot(val_loss_x, val_loss)
+    fig.suptitle('Affordance Plots')
+    fig.supxlabel('Epoch')
+    fig.supylabel('Loss')
+    ax1.set_title('Train Loss')
+    ax2.set_title('Validation Loss')
+
+    avg_loss_train_x = range(len(avg_loss_train))
+    tl_state_loss_train_x = range(len(tl_state_loss_train))
+    route_angle_loss_train_x = range(len(route_angle_loss_train))
+    tl_dist_loss_train_x = range(len(tl_dist_loss_train))
+    lane_dist_loss_train_x = range(len(lane_dist_loss_train))
+
+    avg_loss_val_x = range(len(avg_loss_val))
+    tl_state_loss_val_x = range(len(tl_state_loss_val))
+    route_angle_loss_val_x = range(len(route_angle_loss_val))
+    tl_dist_loss_val_x = range(len(tl_dist_loss_val))
+    lane_dist_loss_val_x = range(len(lane_dist_loss_val))
+
+    ax1.plot(avg_loss_train_x, avg_loss_train, 'b', label='avg_loss')
+    ax1.plot(tl_state_loss_train_x, tl_state_loss_train, 'g', label='tl_state')
+    ax1.plot(route_angle_loss_train_x, route_angle_loss_train, 'r', label='route_angle')
+    ax1.plot(tl_dist_loss_train_x, tl_dist_loss_train, 'c', label='tl_dist')
+    ax1.plot(lane_dist_loss_train_x, lane_dist_loss_train, 'm', label='lane_dist')
+    ax1.legend()
+
+    ax2.plot(avg_loss_val_x, avg_loss_val, 'b', label='avg_loss')
+    ax2.plot(tl_state_loss_val_x, tl_state_loss_val, 'g', label='tl_state')
+    ax2.plot(route_angle_loss_val_x, route_angle_loss_val, 'r', label='route_angle')
+    ax2.plot(tl_dist_loss_val_x, tl_dist_loss_val, 'c', label='tl_dist')
+    ax2.plot(lane_dist_loss_val_x, lane_dist_loss_val, 'm', label='lane_dist')
+    ax2.legend()
+
     plt.savefig('cal_loss.png')
 
 
@@ -85,7 +147,7 @@ def main():
     val_dataset = ExpertDataset(val_root)
 
     # You can change these hyper parameters freely, and you can add more
-    num_epochs = 2
+    num_epochs = 10
     batch_size = 8
     save_path = "pred_model.ckpt"
 
@@ -96,6 +158,7 @@ def main():
     train_losses = []
     val_losses = []
     for i in range(num_epochs):
+        print('Epoch: ' + str(i))
         train_losses.append(train(model, train_loader))
         val_losses.append(validate(model, val_loader))
     torch.save(model, save_path)
