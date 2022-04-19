@@ -70,7 +70,11 @@ def train(model, dataloader):
 def plot_losses(train_loss, val_loss):
     """Visualize your plots and save them for your report."""
     fig, (ax1, ax2) = plt.subplots(2)
-    fig.suptitle('Train Loss & Val Loss')
+    fig.suptitle('CILRS Plots')
+    fig.supxlabel('Epoch')
+    fig.supylabel('Loss')
+    ax1.set_title('Train Loss')
+    ax2.set_title('Validation Loss')
     train_loss_x = range(len(train_loss))
     val_loss_x = range(len(val_loss))
     ax1.plot(train_loss_x, train_loss)
