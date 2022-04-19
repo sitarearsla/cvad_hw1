@@ -38,11 +38,11 @@ def validate(model, dataloader):
             route_angle_loss += affordance_l['route_angle'].item()
         if counter % 200 == 0:
             print("val iter " + str(counter))
-    print("val loss:" + str(loss_total))
     avg_loss = loss_total / counter
-    losses = {'avg_loss': avg_loss, 'tl_state': tl_state_loss,
-              'tl_dist': tl_dist_loss, 'route_angle': route_angle_loss,
-              'lane_dist': lane_dist_loss}
+    losses = {'avg_loss': avg_loss, 'tl_state': tl_state_loss / counter,
+              'tl_dist': tl_dist_loss / counter, 'route_angle': route_angle_loss / counter,
+              'lane_dist': lane_dist_loss / counter}
+    print("Val loss:" + str(avg_loss))
     return losses
 
 
@@ -80,11 +80,11 @@ def train(model, dataloader):
         torch.cuda.empty_cache()
         if counter % 500 == 0:
             print("train iter " + str(counter))
-    print("Train loss:" + str(loss_total))
     avg_loss = loss_total / counter
-    losses = {'avg_loss':avg_loss, 'tl_state':tl_state_loss,
-              'tl_dist': tl_dist_loss,'route_angle':route_angle_loss,
-              'lane_dist':lane_dist_loss}
+    losses = {'avg_loss':avg_loss, 'tl_state':tl_state_loss / counter,
+              'tl_dist': tl_dist_loss / counter,'route_angle':route_angle_loss / counter,
+              'lane_dist':lane_dist_loss / counter}
+    print("Train loss:" + str(avg_loss))
     return losses
 
 
