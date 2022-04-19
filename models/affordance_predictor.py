@@ -71,21 +71,21 @@ class TaskBlock(nn.Module):
         return x
 
 
-### helper functions
+# helper functions from CAL paper
 
 def tile_array(a, b0, b1):
-    r, c = a.shape  # number of rows/columns
-    rs, cs = a.strides  # row/column strides
-    x = as_strided(a, (r, b0, c, b1), (rs, 0, cs, 0))  # view a as larger 4D array
-    return x.reshape(r * b0, c * b1)  # create new 2D array
+    # create new 2D array
+    r, c = a.shape
+    rs, cs = a.strides
+    x = as_strided(a, (r, b0, c, b1), (rs, 0, cs, 0))
+    return x.reshape(r * b0, c * b1)
 
 
 def get_bool_vec(d, n_h):
+    # first one hot encode to four possible classes
     d = d.detach().cpu()
     d = np.array(d).astype(np.int)
-    # first one hot encode to four possible classes
     t = np.zeros((len(d), 4))
-
     t[np.arange(len(d)), d] = 1
     # upscale to correct hidden_sz
     bool_vec = tile_array(t, 1, n_h // 4)
