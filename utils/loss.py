@@ -1,52 +1,46 @@
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 
-def compute_masks(controls, num_targets):
-    c_masks = []
+def compute_masks(controls):
     # c = 3, branch 1 (lanefollow) is activated
-    c_b1 = (controls == 3)
-    c_b1 = torch.tensor(c_b1, dtype=torch.float32).cuda()
-    c_b1 = torch.cat([c_b1] * num_targets, 1)
-    c_masks.append(c_b1)
+    c_b1 = create_mask(controls, 3)
     # c = 0, branch 2 (turn left) is activated
-    c_b2 = (controls == 0)
-    c_b2 = torch.tensor(c_b2, dtype=torch.float32).cuda()
-    c_b2 = torch.cat([c_b2] * num_targets, 1)
-    c_masks.append(c_b2)
+    c_b2 = create_mask(controls, 0)
     # c = 1, branch 3 (turn right) is activated
-    c_b3 = (controls == 1)
-    c_b3 = torch.tensor(c_b3, dtype=torch.float32).cuda()
-    c_b3 = torch.cat([c_b3] * num_targets, 1)
-    c_masks.append(c_b3)
+    c_b3 = create_mask(controls, 1)
     # c = 2, branch 4 (go straight) is activated
-    c_b4 = (controls == 2)
-    c_b4 = torch.tensor(c_b4, dtype=torch.float32).cuda()
-    c_b4 = torch.cat([c_b4] * num_targets, 1)
-    c_masks.append(c_b4)
-    return c_masks
+    c_b4 = create_mask(controls, 2)
+    return [c_b1, c_b2, c_b3, c_b4]
+
+
+def create_mask(controls, given):
+    num_of_actions = 3
+    branch = (controls == given)
+    branch = torch.tensor(branch, dtype=torch.float32).cuda()
+    return torch.cat([branch] * num_of_actions, 1)
 
 
 def l2(params):
+    predicted_speed = params['branches'][-1]
+    loss_l2 = nn.MSELoss()
     loss_branches_vec = []
     for i in range(4):
-        loss_branches_vec.append(((params['branches'][i] - params['targets']) ** 2
-                                  * params['controls_mask'][i])
-                                 * params['branch_weights'][i])
-    loss_branches_vec.append((params['branches'][-1] - params['inputs']) ** 2
-                             * params['branch_weights'][-1])
+        action_loss = loss_l2(params['branches'][i], params['targets']) * params['controls_mask'][i] * 0.95
+        loss_branches_vec.append(action_loss)
+    speed_loss = loss_l2(predicted_speed, params['speed']) * 0.05
+    loss_branches_vec.append(speed_loss)
     return loss_branches_vec
 
 
 def Loss(params):
-    controls_mask = compute_masks(params['controls'], params['branches'][0].shape[1])
+    controls_mask = compute_masks(params['controls'])
     params.update({'controls_mask': controls_mask})
     #  loss for each branch
     loss_branches_vec = l2(params)
     for i in range(4):
-        loss_branches_vec[i] = loss_branches_vec[i][:, 0] * params['variable_weights']['steer'] \
-                               + loss_branches_vec[i][:, 1] * params['variable_weights']['throttle'] \
-                               + loss_branches_vec[i][:, 2] * params['variable_weights']['brake']
+        loss_branches_vec[i] = loss_branches_vec[i][:, 0] + loss_branches_vec[i][:, 1] + loss_branches_vec[i][:, 2]
 
     loss_function = loss_branches_vec[0] + loss_branches_vec[1] + loss_branches_vec[2] + \
                     loss_branches_vec[3]
